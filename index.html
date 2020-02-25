@@ -86,7 +86,31 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        
+        <h2 id="1-http"><a href="#1-http" class="headerlink" title="1.http"></a>1.http</h2><p>浏览器和服务器之间通信是通过HTTP协议，HTTP协议永远都是客户端发起请求，服务器回送响应。模型如下：</p>
+<p>HTTP报文就是浏览器和服务器间通信时发送及响应的数据块。浏览器向服务器请求数据，发送请求(request)报文；服务器向浏览器返回数据，返回响应(response)报文。报文信息主要分为两部分：</p>
+<p>报文头部：一些附加信息（cookie，缓存信息等），与缓存相关的规则信息，均包含在头部中<br>数据主体部分：HTTP请求真正想要传输的数据内容</p>
+<p>本文用到的一些报文头如下：<br><img src="C:%5CUsers%5CWANGSI~1%5CAppData%5CLocal%5CTemp%5C1582608670534.png" alt="1582608670534"></p>
+<h2 id="2-http协议的缓存定义"><a href="#2-http协议的缓存定义" class="headerlink" title="2.http协议的缓存定义"></a>2.http协议的缓存定义</h2><p>http缓存是指:当Web请求抵达缓存时， 如果本地有“已缓存的”副本，就可以从本地存储设备而不是从原始服务器中提取这个文档。</p>
+<h2 id="3-http协议缓存的分类"><a href="#3-http协议缓存的分类" class="headerlink" title="3.http协议缓存的分类"></a>3.http协议缓存的分类</h2><p>强制缓存（也称强缓存）和协商缓存。两类缓存规则不同，强制缓存在缓存数据未失效的情况下，不需要再和服务器发生交互；而协商缓存，顾名思义，需要进行比较判断是否可以使用缓存。</p>
+<p>两类缓存规则可以同时存在，强制缓存优先级高于协商缓存，也就是说，当执行强制缓存的规则时，如果缓存生效，直接使用缓存，不再执行协商缓存规则。</p>
+<h3 id="2-强制缓存"><a href="#2-强制缓存" class="headerlink" title="2.强制缓存"></a>2.强制缓存</h3><p>强制缓存分为两种情况，Expires和Cache-Control。</p>
+<h4 id="Expires"><a href="#Expires" class="headerlink" title="Expires"></a>Expires</h4><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">response.setHeader(<span class="string">'Expires'</span>,<span class="string">'Mon Jan 01 2018 08:00:00 GMT'</span>)    <span class="comment">//必须用格林威治时间格式</span></span><br></pre></td></tr></table></figure>
+
+<p>服务器在响应时，回传格林威治时间，表示在次时间内的请求直接从Cache中读取<br>那么客户端在下次请求时，根据上次回传的时间，比对客户端本地时间，<br>如果本地时间未超过回传时间，则不发起请求，直接从Cache中读取。反之，则重新请求。</p>
+<p>缺陷:由于返回的时间比对的是客户端本地时间，如果本地时钟修改，则会导致缓存出现异常</p>
+<h4 id="Cache-Control"><a href="#Cache-Control" class="headerlink" title="Cache-Control"></a>Cache-Control</h4><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">response.setHeader(<span class="string">'Cache-Control'</span>,<span class="string">'public,max-age=360'</span>)</span><br></pre></td></tr></table></figure>
+
+<p>服务器在响应时，回传max-age参数，表示缓存时间：xx秒，那么客户端在下次请求时，根据上次回传的max-age值,<br>首先判断缓存的相对时间，如果还未超过时间，则不发起请求，直接从Cache中读取。反之，则重新请求。</p>
+<h3 id="3-协商缓存"><a href="#3-协商缓存" class="headerlink" title="3.协商缓存"></a>3.协商缓存</h3><p>强制缓存的弊端很明显，即每次都是根据时间来判断缓存是否过期；但是当到达过期时间后，如果文件没有改动，再次去获取文件就有点浪费服务器的资源了。协商缓存有两组报文结合使用：<br>Last-Modified和ETag</p>
+<h4 id="Last-Modified"><a href="#Last-Modified" class="headerlink" title="Last-Modified"></a>Last-Modified</h4><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">response.setHeader(<span class="string">'Last-Modified'</span>,<span class="string">'Fri,22 Jul 2016 08:00:00 GMT'</span>)</span><br></pre></td></tr></table></figure>
+
+<p>服务器在响应时，同样回传格林威治时间，不同的是，它表示的是服务器最新一次对页面修改的时间<br>那么客户端在下次请求时，会通过If-Modified-Since: Last-Modified-value带上之前回传回来的时间<br>如果客户端传来的最后修改时间与服务器上的依然一致，则直接回送304 和响应报头即可。<br>如果没有匹配上，说明服务器已对页面做了修改，则重新相应新的页面并回传新的Last-Modified</p>
+<h5 id="缺陷："><a href="#缺陷：" class="headerlink" title="缺陷："></a>缺陷：</h5><p>只要资源修改，无论内容是否发生实质性的变化，都会将该资源返回客户端。例如周期性重写，这种情况下该资源包含的数据实际上一样的。<br>以时刻作为标识，无法识别一秒内进行多次修改的情况。<br>某些服务器不能精确的得到文件的最后修改时间。</p>
+<h4 id="ETag"><a href="#ETag" class="headerlink" title="ETag"></a>ETag</h4><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">response.setHeader(<span class="string">'ETag'</span>,<span class="string">'3f'</span>d729c07839068ebb6f7f4374981d9f<span class="string">') //一般可用MD5</span></span><br></pre></td></tr></table></figure>
+
+<p>服务器在响应时，回传一个唯一标志符（比如md5），服务器在把页面响应给客户端的时候，会在实体首部加上“ETag: 唯一标识符”一起返回给客户端<br>客服端会保留ETag字段，在下次请求时，通过在请求中添加if-none-match:ETag-value 给服务器，与服务器的ETag字段进行匹配，如果匹配上，则直接回送304 和响应报头即可。反之，则重新发送资源数据并回传新的ETag字段</p>
+<h2 id="4-缓存的好处"><a href="#4-缓存的好处" class="headerlink" title="4.缓存的好处"></a>4.缓存的好处</h2><p>1.减少了冗余的数据传输，节省了网费。<br>2.减少了服务器的负担， 大大提高了网站的性能<br>3.加快了客户端加载网页的速度</p>
+
       
     </div>
     <footer class="article-footer">
